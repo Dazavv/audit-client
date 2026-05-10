@@ -1,4 +1,4 @@
-package com.dazavv.audit.auditclient.audit.model;
+package com.dazavv.audit.auditclient.model;
 
 public enum AuditLogState {
     SUCCESS, FAILED

@@ -1,17 +1,16 @@
-package com.dazavv.audit.auditclient.audit.service;
+package com.dazavv.audit.auditclient.service;
 
-import com.dazavv.audit.auditclient.audit.model.AuditEvent;
+import com.dazavv.audit.auditclient.model.AuditEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-@Service
 @RequiredArgsConstructor
 public class AuditService {
-    private final KafkaAuditService kafkaAuditService;
+    private final AuditSender sender;
 
     public void sendEvent(AuditEvent auditEvent) {
         validateEvent(auditEvent);
-        kafkaAuditService.sendAuditEvent(auditEvent);
+        sender.send(auditEvent);
     }
 
     private void validateEvent(AuditEvent event) {

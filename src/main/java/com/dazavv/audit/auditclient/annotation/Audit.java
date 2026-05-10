@@ -1,4 +1,4 @@
-package com.dazavv.audit.auditclient.audit.annotation;
+package com.dazavv.audit.auditclient.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

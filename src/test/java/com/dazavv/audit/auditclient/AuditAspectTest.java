@@ -1,18 +1,28 @@
 package com.dazavv.audit.auditclient;
 
-import com.dazavv.audit.auditclient.audit.annotation.Audit;
-import com.dazavv.audit.auditclient.audit.aspect.AuditAspect;
-import com.dazavv.audit.auditclient.audit.model.AuditEvent;
-import com.dazavv.audit.auditclient.audit.service.AuditService;
+import com.dazavv.audit.auditclient.annotation.Audit;
+import com.dazavv.audit.auditclient.aspect.AuditAspect;
+import com.dazavv.audit.auditclient.model.AuditEvent;
+import com.dazavv.audit.auditclient.service.AuditService;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.Signature;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Method;
 
-public class AuditAspectTest {
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+
+class AuditAspectTest {
+
     static class TestClass {
-        @Audit(action = "TEST_ACTION", description = "Test method", logArgs = true)
+
+        @Audit(
+                action = "TEST_ACTION",
+                description = "Test method",
+                logArgs = true
+        )
         public String annotatedMethod(String arg) {
             return "ok";
         }
@@ -20,42 +30,120 @@ public class AuditAspectTest {
 
     @Test
     void testCollectLogsSuccess() throws Throwable {
-        AuditService auditService = Mockito.mock(AuditService.class);
+
+        // Arrange
+        AuditService auditService = mock(AuditService.class);
         AuditAspect aspect = new AuditAspect(auditService);
-        TestClass obj = new TestClass();
-        Method method = TestClass.class.getMethod("annotatedMethod", String.class);
+
+        Method method = TestClass.class
+                .getMethod("annotatedMethod", String.class);
 
         Audit audit = method.getAnnotation(Audit.class);
 
-        ProceedingJoinPoint joinPoint = new ProceedingJoinPointMock(obj, method, new Object[]{"arg1"});
+        Signature signature = mock(Signature.class);
+
+        when(signature.getName())
+                .thenReturn(method.getName());
+
+        when(signature.getDeclaringTypeName())
+                .thenReturn(method.getDeclaringClass().getName());
+
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+
+        when(joinPoint.proceed()).thenReturn("ok");
+        when(joinPoint.getArgs())
+                .thenReturn(new Object[]{"arg1"});
+        when(joinPoint.getSignature())
+                .thenReturn(signature);
+
+        // Act
         Object result = aspect.collectLogs(joinPoint, audit);
 
-        assert result.equals("ok");
-        Mockito.verify(auditService).sendEvent(Mockito.any(AuditEvent.class));
+        // Assert
+        assertThat(result).isEqualTo("ok");
+
+        ArgumentCaptor<AuditEvent> captor =
+                ArgumentCaptor.forClass(AuditEvent.class);
+
+        verify(auditService).sendEvent(captor.capture());
+
+        AuditEvent event = captor.getValue();
+
+        assertThat(event.getAction())
+                .isEqualTo("TEST_ACTION");
+
+        assertThat(event.getDescription())
+                .isEqualTo("Test method");
+
+        assertThat(event.getMethodName())
+                .isEqualTo("annotatedMethod");
+
+        assertThat(event.getStatus().name())
+                .isEqualTo("SUCCESS");
+
+        assertThat(event.getArguments())
+                .containsExactly("arg1");
     }
 
     @Test
     void testCollectLogsFailure() throws Throwable {
-        AuditService auditService = Mockito.mock(AuditService.class);
+
+        // Arrange
+        AuditService auditService = mock(AuditService.class);
         AuditAspect aspect = new AuditAspect(auditService);
 
         class FailingClass {
+
             @Audit(action = "FAIL_ACTION")
             public void failMethod() {
                 throw new RuntimeException("fail");
             }
         }
 
-        Method method = FailingClass.class.getMethod("failMethod");
-        Audit audit = method.getAnnotation(Audit.class);
-        ProceedingJoinPoint joinPoint = new ProceedingJoinPointMock(new FailingClass(), method, new Object[]{});
+        Method method =
+                FailingClass.class.getMethod("failMethod");
 
+        Audit audit = method.getAnnotation(Audit.class);
+
+        Signature signature = mock(Signature.class);
+
+        when(signature.getName())
+                .thenReturn(method.getName());
+
+        when(signature.getDeclaringTypeName())
+                .thenReturn(method.getDeclaringClass().getName());
+
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+
+        when(joinPoint.proceed())
+                .thenThrow(new RuntimeException("fail"));
+
+        when(joinPoint.getArgs())
+                .thenReturn(new Object[]{});
+
+        when(joinPoint.getSignature())
+                .thenReturn(signature);
+
+        // Act + Assert
         try {
             aspect.collectLogs(joinPoint, audit);
         } catch (RuntimeException e) {
-            assert e.getMessage().equals("fail");
+
+            assertThat(e.getMessage())
+                    .isEqualTo("fail");
         }
 
-        Mockito.verify(auditService).sendEvent(Mockito.any(AuditEvent.class));
+        ArgumentCaptor<AuditEvent> captor =
+                ArgumentCaptor.forClass(AuditEvent.class);
+
+        verify(auditService).sendEvent(captor.capture());
+
+        AuditEvent event = captor.getValue();
+
+        assertThat(event.getStatus().name())
+                .isEqualTo("FAILED");
+
+        assertThat(event.getErrorMessage())
+                .isEqualTo("fail");
     }
 }
