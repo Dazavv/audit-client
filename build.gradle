@@ -1,12 +1,11 @@
 plugins {
     id 'java-library'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'org.springframework.boot' version '3.5.0'
     id 'maven-publish'
 }
 
 group = 'com.dazavv.audit'
-version = '0.0.2'
+version = '0.0.3'
 
 java {
     toolchain {
@@ -39,6 +38,12 @@ dependencies {
     testImplementation 'org.mockito:mockito-junit-jupiter'
 }
 
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.0"
+    }
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }
@@ -47,6 +52,23 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
+            pom.withXml {
+                asNode().dependencies?.dependency?.findAll { dep ->
+                    dep.groupId.text() == 'org.springframework.kafka' ||
+                            dep.groupId.text() == 'org.springframework.boot' &&
+                            dep.artifactId.text().contains('security') ||
+                            dep.groupId.text() == 'org.springframework.security'
+                }?.each { it.parent().remove(it) }
+            }
         }
     }
     repositories {
