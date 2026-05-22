@@ -2,7 +2,6 @@ package com.dazavv.audit.auditclient.service;
 
 import com.dazavv.audit.auditclient.model.AuditEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
 public class AuditService {

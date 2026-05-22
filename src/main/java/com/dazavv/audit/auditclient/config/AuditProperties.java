@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "audit")
 public class AuditProperties {
 
-//    @NotBlank
     private String topic = "audit-events";
     private boolean enabled = true;
 

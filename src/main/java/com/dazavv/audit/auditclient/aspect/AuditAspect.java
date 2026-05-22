@@ -61,7 +61,6 @@ public class AuditAspect {
             throw ex;
         }
     }
-    // AuditAspect.java — метод buildEvent, дополненная версия
 
     private AuditEvent buildEvent(ProceedingJoinPoint joinPoint,
                                   Audit audit,
